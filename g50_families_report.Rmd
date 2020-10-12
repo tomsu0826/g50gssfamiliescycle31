@@ -15,7 +15,16 @@ library(tidyverse)
 
 # 2. Data
 
+Data description and where the data came from. The fact it was a opt-in survey....
+
 # 3. Model
+
+We are interested in explaining whether a woman changed her name when she got married, based on X, Y and Z.
+
+$$Pr(y_i = 1) = \mbox{logit}^{-1}\left(\alpha^{age}_{a[i]} + \alpha^{educ}_{e[i]} + \alpha^{state}_{s[i]} + \alpha^{dec}_{d[i]}\right) $$
+where the $\alpha$ are age-group, education, state, and decade effects, respectively. The notation $a[i]$ refers to the age-group $a$ to which individual $i$ belongs. These are modeled as:
+$$\alpha^{age}_a \sim N(0, \sigma_{age})\mbox{ for }a = 1, 2, \ldots, A$$
+where $A$ is the total number of age-groups. .... Talk about the other ones also....
 
 # 4. Results
 
