@@ -1,0 +1,28 @@
+---
+title: "GSS Families"
+author: "Joanne Sun, Leqi Sun, Tzu-Ang Su"
+date: "October 19, 2020"
+abstract: 'In this paper...'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+# 1. Introduction
+
+# 2. Data
+
+# 3. Model
+
+# 4. Results
+
+# 5. Discussions
+
+## 5.1 Weaknesses and Next Steps
+
+# 6. References
+
+# 7. Appendix
