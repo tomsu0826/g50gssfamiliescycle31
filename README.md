@@ -9,4 +9,4 @@ Folder "inputs" contains all the raw data obtained from GSS.
 
 Folder "script" contains an R Script file that cleans up the raw data from the "inputs" folder.
 
-Folder "outputs" contains the cleaned GSS data produced by the R Script file mentioned above.
+Folder "output" contains the cleaned GSS data produced by the R Script file mentioned above.

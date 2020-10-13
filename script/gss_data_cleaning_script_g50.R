@@ -32,16 +32,15 @@
 ## You WILL need to change the raw data name. Search for .csv - line 41
 ## You may need to adjust the filepaths depending on your system. Search for: read_
 
-
 #### Workspace set-up ####
 library(janitor)
 library(tidyverse)
 
 # Load the data dictionary and the raw data and correct the variable names
-raw_data <- read_csv("AA8MGinv.csv")
-dict <- read_lines("gss_dict.txt", skip = 18) # skip is because of preamble content
+raw_data <- read_csv("inputs/gss_raw_data_g50.csv")
+dict <- read_lines("inputs/gss_dict_g50.txt", skip = 18) # skip is because of preamble content
 # Now we need the labels because these are the actual responses that we need
-labels_raw <- read_file("gss_labels.txt")
+labels_raw <- read_file("inputs/gss_labels_g50.txt")
 
 
 #### Set-up the dictionary ####
@@ -214,8 +213,8 @@ gss <- gss %>%
          age_immigration = alndimmg,
          landed_immigrant = bpr_16,
          citizenship_status = bpr_19,
-         education = ehg3_01b,
-         own_rent = odr_10,
+         education_highest = ehg3_01b,
+         dwelling_own_rent = odr_10,
          living_arrangement = livarr12,
          hh_type = dwelc,
          hh_size = hsdsizec,
@@ -343,4 +342,4 @@ gss <- gss %>%
     number_total_children_intention=="Don't" ~ as.numeric(NA)
   )) 
 
-write_csv(gss, "gss.csv")
+write_csv(gss, "output/gss_clean_data_g50.csv")
