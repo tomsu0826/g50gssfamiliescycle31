@@ -34,4 +34,10 @@ where $A$ is the total number of age-groups. .... Talk about the other ones also
 
 # 6. References
 
+## 6.1 References for the Report
+
+## 6.2 Reference for Data Cleaning
+
 # 7. Appendix
+GitHub Link:
+
