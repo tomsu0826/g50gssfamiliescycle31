@@ -4,6 +4,7 @@ author: "Joanne Sun, Leqi Sun, Tzu-Ang Su, Cameron Fryer"
 date: "October 19, 2020"
 abstract: 'Home ownership is an important indicator of life quality and the economy of a country as whole. In this paper, we investigate the Canadian General Social Survey (“GSS”) – Family (cycle 31) dataset, which was a probability survey administered in 2017. Consequently, we find that men are more likely to own a house than women, and that persons aged 40-65 years are more likely to own a house than those belonging to other age groups. While both of these findings provide implications for deeper social issues, it’s also worth noting that the province where Canadians are least likely to own a house and most likely to own a house are Quebec, and Newfoundland, respectively. Code and data supporting this analysis is available at: https://github.com/tomsu0826/g50gssfamiliescycle31'
 output: pdf_document
+bibliography: references.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -348,9 +349,20 @@ knitr::kable(results, digits = 3)
 
 # 6 References
 
-## 6.1 References for the Report
+Average house prices in Canada. Retrieved from: https://www.livingin-canada.com/house-prices-canada.html
 
-## 6.2 Reference for Data Cleaning
+Battu, Harminder and Ma, Ada and Phimister, Euan. 2008. Housing tenure, job mobility and unemployment in the UK. The Economic Journal. 118(3): 311-328. 
+Bilyk, Olga and TeNyenhuis, Maria. 2018. The impact of recent policy changes on the Canadian Mortgage Market. Bank of Canada. Retrieved from: https://www.bankofcanada.ca/2018/11/staff-analytical-note-2018-35/
+
+Fisher, Jonas and Gervais, Martin. 2011. Why has home ownership fallen among the young? International economic Review. 52(3): 883-912.
+
+Lersch, Philipp and Vidal, Sergi. 2014. Falling out of love and down the housing ladder: a longitudinal analysis of marital separation and home ownership. European Sociological Review. 30(4): 512-524. 
+
+Median annual family income in Canada 2018, by province. Retrieved from: https://www.statista.com/statistics/467078/median-annual-family-income-in-canada-by-province/
+
+Tumen, Semih and Zeydanli, Tugba. 2014. Home ownership and job satisfaction. Social Indicators Research. 117(1): 165-177. 
+
+Gao, Yuxiang and Kennedy, Lauren and Simpson, Daniel and Gelman, Andrew. "Improving Multilevel Regression and Poststratification with Structured Priors." Bayesian Analysis, 10.1214/20-ba1223, 2020.
 
 # 7 Appendix
 GitHub Link: https://github.com/tomsu0826/g50gssfamiliescycle31
