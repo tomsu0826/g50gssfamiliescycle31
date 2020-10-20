@@ -1,43 +1,357 @@
 ---
 title: "GSS Families"
-author: "Joanne Sun, Leqi Sun, Tzu-Ang Su"
+author: "Joanne Sun, Leqi Sun, Tzu-Ang Su, Cameron Fryer"
 date: "October 19, 2020"
-abstract: 'In this paper...'
+abstract: 'Home ownership is an important indicator of life quality and the economy of a country as whole. In this paper, we investigate the Canadian General Social Survey (“GSS”) – Family (cycle 31) dataset, which was a probability survey administered in 2017. Consequently, we find that men are more likely to own a house than women, and that persons aged 40-65 years are more likely to own a house than those belonging to other age groups. While both of these findings provide implications for deeper social issues, it’s also worth noting that the province where Canadians are least likely to own a house and most likely to own a house are Quebec, and Newfoundland, respectively. Code and data supporting this analysis is available at: https://github.com/tomsu0826/g50gssfamiliescycle31'
 output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(brms)
+library(plyr)
+library(broom.mixed)
+library(ggmcmc)
+library(coda)
+library(bayesplot)
+library(modelr)
+library(tidybayes)
+library(gtools)
+library(ggplot2)
 ```
 
-# 1. Introduction
+```{r data, include=FALSE}
+# load the cleaned data, store an original copy in the environment and work on a different copy to make sure that we have access to the original data.
+orig_data <- read.csv("output/gss_clean_data_g50.csv")
+data <- orig_data
 
-# 2. Data
+# Divide the age into 5 age groups: under 20, 21-29, 30-39, 40-65, and over 65. 
+# Notice that for a person whose age is older than the threshold age for each category, the person will be classified into the next category.
+# i.e.: if a person is 20.2 years old, the person belongs to the 21-29 group. 
+data <- data %>% mutate(age_group=cut(age, breaks=c(0, 20, 29, 39, 65, Inf), 
+                                      labels=c("Under 20", "21-29", "30-39", 
+                                               "40-65", "Over 65"))) 
 
-Data description and where the data came from. The fact it was a opt-in survey....
+# Change the value of dwelling ownership status to make it easier to display
+data$dwelling_own_rent <- mapvalues(data$dwelling_own_rent, 
+                                    from = c("Don't know", 
+                                             "Owned by you or a member of this household, even if it i...", 
+                                             "Rented, even if no cash rent is paid"), 
+                                    to = c("Don't know", "Owned", "Rented"))
 
-# 3. Model
+# Select the variables of interest in the dataset 
+data <- data %>%
+  filter(dwelling_own_rent != "Don't know") %>% 
+  mutate(dwelling_ownership = dwelling_own_rent,
+         gender = as.factor(sex),
+         province = as.factor(province),
+         highest_education = as.factor(education_highest),
+         family_income = as.factor(income_family)) %>% 
+  mutate(male = ifelse(gender == "Male", 1, 0)) %>% 
+  select(dwelling_ownership, age_group, male, province, highest_education, 
+         family_income)
 
-We are interested in explaining whether a woman changed her name when she got married, based on X, Y and Z.
+data$dwelling_ownership <- as.numeric(revalue(data$dwelling_ownership, 
+                                              c("Owned" = 1, "Rented" = 0)))
+```
 
-$$Pr(y_i = 1) = \mbox{logit}^{-1}\left(\alpha^{age}_{a[i]} + \alpha^{educ}_{e[i]} + \alpha^{state}_{s[i]} + \alpha^{dec}_{d[i]}\right) $$
-where the $\alpha$ are age-group, education, state, and decade effects, respectively. The notation $a[i]$ refers to the age-group $a$ to which individual $i$ belongs. These are modeled as:
-$$\alpha^{age}_a \sim N(0, \sigma_{age})\mbox{ for }a = 1, 2, \ldots, A$$
-where $A$ is the total number of age-groups. .... Talk about the other ones also....
+```{r postdata, include=FALSE}
+# Now create the post-stratification data
+# Read the 2016 census file downloaded from Census Canada (published in 2017)
+strat_data <- read_csv("misc/2017_census.csv")
+# The original data file has too many age groups, merge some together, and only keep variables of interest
 
-# 4. Results
+strat_data <- strat_data %>% 
+  mutate(Province = as.factor(COL1),
+         Population = COL2,
+         Male_under20 = COL3 + COL4,
+         Male_29 = COL5 + COL6,
+         Male_39 = COL7 + COL8,
+         Male_65 = COL9 + COL10 + COL11 + COL12 + COL13,
+         Male_over65 = COL14,
+         Female_under20 = COL15 + COL16,
+         Female_29 = COL17 + COL18,
+         Female_39 = COL19 + COL20,
+         Female_65 = COL21 + COL22 + COL23 + COL24 + COL25,
+         Female_over65 = COL26
+         ) %>% 
+  select(Province, Population, Male_under20, Male_29, Male_39, Male_65, 
+         Male_over65, Female_under20, Female_29, Female_39, Female_65,
+         Female_over65)
 
-# 5. Discussions
+# Create the dataframe for post-stratification, we first extract the variables of interest
+age <-  c(rep(c("under 20", "21-29", "30-39", "40-65", "over 65"),
+              length(levels(data$province))*2))
+
+province <-c(rep(levels(data$province), each = 10))
+
+male <- rep(c(rep(1,5),rep(0,5)),10)
+
+count_Alberta <- strat_data %>% 
+  filter(Province == "Alberta") %>% 
+  select(-Province,
+         -Population)
+count_BC <- strat_data %>% 
+  filter(Province == "British Columbia") %>% 
+  select(-Province,
+         -Population)
+count_Manitoba <- strat_data %>% 
+  filter(Province == "Manitoba") %>% 
+  select(-Province,
+         -Population)
+count_NB <- strat_data %>% 
+  filter(Province == "New Brunswick") %>% 
+  select(-Province,
+         -Population)
+count_NL <- strat_data %>% 
+  filter(Province == "Newfoundland and Labrador") %>% 
+  select(-Province,
+         -Population)
+count_NS <- strat_data %>% 
+  filter(Province == "Nova Scotia") %>% 
+  select(-Province,
+         -Population)
+count_ON <- strat_data %>% 
+  filter(Province == "Ontario") %>% 
+  select(-Province,
+         -Population)
+count_PEI <- strat_data %>% 
+  filter(Province == "Prince Edward Island") %>% 
+  select(-Province,
+         -Population)
+count_QC <- strat_data %>% 
+  filter(Province == "Quebec") %>% 
+  select(-Province,
+         -Population)
+count_Saskatchewan <- strat_data %>% 
+  filter(Province == "Saskatchewan") %>% 
+  select(-Province,
+         -Population)
+
+count = c(t(count_Alberta), t(count_BC), t(count_Manitoba), t(count_NB), 
+          t(count_NL), t(count_NS), t(count_ON), t(count_PEI), t(count_QC), 
+          t(count_Saskatchewan))
+
+# Create the dataframe
+poststrat <- as_tibble(cbind(province,age,male, c(count)))
+
+# Convert to appropriate variable types
+poststrat <- poststrat %>% 
+  mutate(province = as.factor(province),
+         age_group = as.factor(age),
+         N = as.numeric(V4),
+         male = as.numeric(male)) %>% 
+  select(province, age_group, male, N)
+```
+
+# 1 Introduction
+    Prior studies on house ownership have discovered links between the subject matter and many other aspects of life, including marital status, employment, job satisfaction, family income, and age (Battu et al, 2008; Fisher & Gervais, 2011; Lersch & Vidal, 2014; Tumen & Zeydanli, 2014). The problem, however, is that these influencing factors were investigated rather independently and qualitatively. Thus, by utilizing data from the Canadian General Social Surveys ("GSS") on family life (cycle 31), we created a Bayesian multilevel model to quantify how age, gender, and geographical location (by province) affect an individual’s likelihood of being a homeowner. Accordingly, we found that Canadians with the greatest likelihood of owning a house are male rather than female, are in the age group of 29-39 years old, and live in the province of Newfoundland and Labrador. 
+
+    Second to Newfoundland in terms of its residents’ probability of home ownership is the province of Alberta. Furthermore, the survey participants from Quebec are least likely to own a house, followed by those from British Columbia as second least likely.  Through combining these findings with additional research, explanatory inferences are made.  For example, by conducting research on the average house price in Newfoundland, insight as to why Newfoundland has the greatest probability of home ownership is gained. Other important implications drawn from the results will be interpreted in this report as well.
+
+    The paper will begin with some basic information about where the data was derived from, followed by a plot of the raw data. Thereafter, a rundown of the adopted model will be given, along with a description of the priors, regularization and other significant aspects. Then the model results will be displayed. Afterward, the results will be discussed; future work and possible weaknesses will be highlighted too.
+
+# 2 Data
+## 2.1 Data and Sampling
+    For this paper, the dataset 2017 Canadian General Social Surveys (“GSS”) on Family (cycle 31) is used. This dataset is obtained from the University of Toronto (“U of T”) Library, specifically, via the Computing in the Humanities and Social Sciences (“CHASS”) Data Centre. The dataset on GSS is provided by Statistics Canada. The dataset is downloaded digitally using the Survey Documentation and Analysis (“SDA”) system in CHASS Data Centre, which is only accessible by U of T students, staff, and faculty members.
+
+    The data was collected from February 2 to November 30, 2017 via computer assisted telephone interviews (“CATI”) where the respondents were interviewed in the official language of their choice. The target population was all persons who are age 15 or older in Canada but excludes residents of Yukon, Northwest Territories, and Nunavut; and full-time residents of institutions. The listing of population from which Statistics Canada can draw samples from, otherwise known as the “sampling frame” was created using a list of telephone numbers in use, both landline and cellular available to Statistics Canada from various sources. The Address Register (AR) which contains a list of all dwellings within the ten provinces was also included in creating the sampling frame. The use of AR helped Statistics Canada to group all telephone numbers together with the same address. The target number of respondents or sample size was 20,000 and in the end the actual number was 20,602.
+
+    During the sampling period, each of the ten provinces were divided into geographic areas or strata. In each stratum, a simple random sample without replacement was used, the respondents were randomly selected from each household for the telephone interview. For the people who first refused to participate either due to inconvenient call time or some other reasons were recontacted later on, along with an explanation why the survey was important and encouraged their participation. In the end, the overall response rate was 52.4%. Finally, the cost of this survey was not disclosed in the official documentation obtained from CHASS.
+
+## 2.2 The Survey
+
+    The survey itself is very extensive and covers many grounds in regards to families in Canada. Aside from the basic personal information like sex and date of birth, many other concepts were introduced and asked such as family origins, conjugal history, leaving the parental home (young adults leaving home), intentions and reasons to form a union, respondent’s children, fertility intentions, maternity/parental leave, organizations and decision making within the household, etc. Each concept contains multiple questions about it. One key strength about this survey is the length. Once completed, a very detailed profile of a respondent’s family can be produced. However, this invariably becomes an issue, or a key weakness. The official documentation did not specify the average time a respondent took to complete the survey, but a good estimate could be within 30 minutes to an hour, and conducting such a long survey over the telephone may be too time and energy consuming. To solve this issue, every question in the survey was designed to have Don’t Know (DK) and Refusal (RF) as options, so respondents can always refuse, or in a way, “skip” the question very quickly.
+
+## 2.3 Data Used
+    Once the raw dataset was downloaded from CHASS, we used a script created by Rohan Alexander and Sam Caetano to clean up the data. See GitHub repository for the script and it’s output. Even after cleaning (only a selected number of variables from the raw data were kept), the dataset is still huge, thus we have decided to not use all the variables, and only pick out ones we think are relevant. Our goal here is to find which variable has the greatest impact on homeownership, since the survey itself goes into detail on every topic, using it may not be representative of the population, hence we unfortunately cannot choose those variables as the variables we want to use. In our case, we think the more general a variable is, the better. Therefore we chose only three: age, gender, and geographical location (by province) to investigate the effects of it on homeownership. Figure 1 and 2 below shows plots of the raw data.
+```{r plot raw data 1, fig.show = "hold", echo = FALSE}
+simple_plot <- data 
+# Use count to get the frequency
+var_select = c("age_group", "male")
+count_freq = count(simple_plot, var_select)
+# Modify the data to a new data frame by changing the gender from 0,1 to Female, Male.
+mod_freq <- data.frame("Age_Group" = count_freq$age_group, 
+                       "Gender" = levels(count_freq$male) <- c("Female","Male"),
+                       "Popluation" = count_freq$freq)
+
+#Plot the graph using ggplot2
+ggplot(mod_freq, aes(x=Age_Group, y=Popluation, fill=Gender)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = Popluation), 
+            position=position_dodge(width=0.9), 
+            vjust=-0.25)+
+  labs(title = "Figure 1: Respondents' Age Groups")+
+  xlab(label = "Age Group")+
+  ylab(label = "Count")
+```
+
+```{r plot raw data 2, fig.show = "hold", echo = FALSE}
+simple_plot2 <- data
+# Use count to get the frequency
+var_select = c("age_group", "male", "province")
+count_freq2 = count(simple_plot2, var_select)
+# Modify the data to a new data frame by changing the gender from 0,1 to Female, Male.
+mod_freq2 <- data.frame("age_group" = count_freq2$age_group, 
+                       "gender" = levels(count_freq2$male) <- c("Female","Male"),
+                       "count" = count_freq2$freq,
+                       "Province" = count_freq2$province)
+
+#Plot the graph using ggplot2
+ggplot(mod_freq2, aes(x=age_group, y=count, fill=Province)) + 
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Figure 2: Respondents' Province Divided by Age Groups ")+
+  xlab(label = "Age Group")+
+  ylab(label = "Count")
+```
+
+# 3 Model
+
+We are interested in explaining whether a person owns a house based on age, gender and province of residence. Let $y_{i} = 1$ if the respondent owns a house (or any kinds of dwelling). The model is as the following:
+
+$$Pr(y_i = 1) = \mbox{logit}^{-1}\left(\beta_{0}+\alpha^{age}_{a[i]} + \alpha^{male}_{m[i]} + \alpha^{province}_{p[i]} + \epsilon\right) $$
+
+ $\beta_{0}$ is the global intercept. The notation $a[i]$ refers to the age-group $a$ to which individual $i$ belongs. There are $5$ age groups in total: under 20, 21-29, 30-39, 40-65, and over 65. The notation $m[i]$ refers whether individual $i$ is male. Similarly, $p[i]$ refers to the province individual $i$ resides. The priors for these variables are:
+ 
+$$\beta_0 \sim N(0, 2)$$
+$$\alpha^{age}_a \sim N(0, 2)\mbox{ for }a = 1, 2, \ldots, 6$$
+The notation $a = 1, 2,\ldots, 6$ represents the age group of each individual.
+$$\alpha^{male}_m \sim N(0, 2)\mbox{ for }m = 1, 0$$
+$m = 1$ when the individual is male, $m = 0$ when the individual is female.
+
+$$\alpha^{province}_p \sim N(0, 2)\mbox{ for }p = 1, 2, \ldots, 10$$
+The notation $p = 1, 2,\ldots, 10$ represents the province of residency for each individual.
+
+$$\epsilon \sim t(3, 0, 2.5) $$
+The error term $\epsilon$ has been modeled as following a student t-distribution.
+
+The priors for fixed effects are all $Normal(0,2)$ on $logit$ scale, which means that most of the samples are from about $0.018 - 0.98$ on a natural probability scale.
+
+We chose weakly informative priors for two reasons: first of all, we do not have strong assumptions; secondly, we know that the probability must be greater than $0$ and smaller than $1$. By setting weakly informative priors, we hope that the data could tune the posterior distribution as efficiently as possible.
+
+## 3.1 Model Checking
+
+```{r model, include=FALSE, eval= FALSE}
+options(mc.cores = parallel::detectCores())
+# Create a model
+formula1 <- dwelling_ownership ~ male + (1|age_group) + province 
+model1 <- brm(formula = formula1, data = data,family = bernoulli(link = "logit"),
+              chains = 4, cores = 4, control = list(adapt_delta=.99), 
+              prior = c(prior(normal(0,2), class = Intercept), 
+                        prior(normal(0,2), class = b)),
+              sample_prior = TRUE, seed = 1992)
+prior_summary(model1)
+```
+
+Let's do some model checking. Firstly, we do convergence diagnostic to make sure that the MCMC sampling size is big enough. The results of Gelman-Rubin diagnostic shows that the upper confidence limits are either $1$ or very close to $1$, which indicates that the sample chains are converging. It does not flag an issue.
+
+```{r convergencediag, include=FALSE, eval = FALSE}
+# Convergence diagnostic, we use Gelman-Rubin Diagnostic, if Upper CI is close to 1, samples converge
+model1tranformed <- ggs(model1) 
+modelposterior <- as.mcmc(model1) 
+gelman.diag(modelposterior)
+
+# Plot the trace plots. The four chains mix well for all of the parameters and therefore, we can conclude no evidence of non-convergence.
+mcmc_plot(model1, type = "trace")
+
+mcmc_plot(model1, type = "dens")
+```
+
+```{r confusionmatrix, include=FALSE, eval = FALSE}
+# The plot shows no evidence of autocorrelation for all model variables in both chains, as the autocorrelation parameters all quickly diminish to around zero.
+#mcmc_plot(model1, type = "acf_bar")
+
+# Model checking
+Pred_check <- predict(model1, type = "response")
+Pred_check <- if_else(Pred_check[,1] > 0.5, 1, 0)
+ConfusionMatrix <- table(Pred_check, pull(data, dwelling_ownership)) #`pull` results in a vector
+#correct classification rate
+ccr<- sum(diag(ConfusionMatrix))/sum(ConfusionMatrix)
+
+# Confusion Matrix 
+colnames(ConfusionMatrix) <- c("Predicated: Rent a House", "Predicated: Own a House")
+rownames(ConfusionMatrix) <- c("Actual: Rent a House", "Actual: Own a House")
+knitr:: kable(ConfusionMatrix)
+```
+
+The correct classification rate of the model is "r ccr". The Confusion Matrix of the model is shown in the table. The model tends to exaggerate the rent rate. 
+
+Before proceed to do post-stratification, one more model check is needed. A posterior predictive check is necessary. In the plot, $y$ represents the observed data, $y_{rep}$ refers to a randomly sample from the posterior distribution. The plot shows that the posterior density is consistent with the observed data.
+
+```{r predictivecheck, include=FALSE, eval = FALSE}
+# Set seed
+set.seed(1992)
+
+# Set a sample size for prediction
+N <- nrow(data)
+
+# Draw a random sample from the full dataset
+#data_sub <- data[sample(nrow(data),N),]
+
+# Prediction
+pred_model <- posterior_predict(model1, nsamples = 500)
+pred_model[is.na(pred_model)] <- mean(pred_model,na.rm = TRUE)
+
+#Posterior predictive check, plot the distribution of observed data vs. 50 simulated datasets. 
+samp <- sample(nrow(pred_model), 100)
+color_scheme_set("teal")
+ppc_dens_overlay(data$dwelling_ownership, pred_model[samp, ])
+```
+
+The we do post-stratification based on the age, gender and province. The census data used is from the 2016 Census cycle. The plot shows that the model does a fair job.  
+```{r post-stratification, include=FALSE, eval=FALSE}
+# Post-stratification, estimation in the population
+# Draw a stratified sample
+
+s <- length(levels(poststrat$province)) * length(levels(poststrat$age)) * 2
+sample_pop <- sample(1:100, N, prob= (poststrat$N)/strat_data$Population[1], replace=TRUE)
+sample <- poststrat[sample_pop,1:3]
+
+# Population prediction
+Pop <- posterior_predict(model1, newdata = sample, nsamples = 500)
+Pop[is.na(Pop)] <- mean(Pop,na.rm = TRUE)
+
+# Plot the posterior predictive distribution using sampled population datasets vs. observed data
+samp <- sample(nrow(Pop), 100)
+color_scheme_set("teal")
+ppc_dens_overlay(data$dwelling_ownership, Pop[samp, ])
+
+```
+
+# 4 Results
+
+The model estimates and credibel intervals are shown in the table.
+```{r result, include=FALSE, eval=FALSE}
+# Results
+# The estimates is on log scale, use inverse logit function to get the probability estimates
+results <- inv.logit(fixef(model1)[,-2])
+colnames(results) <- c("Estimate", "2.5%", "97.5%")
+rownames(results) <- c("Intercept", "Male", "British Columbia", "Manitoba", "New Brunswick", "Newfoundland and Labrador", "Nova Scotia", "Ontario", "Prince Edward Island", "Quebec", "Saskatchewan")
+knitr::kable(results, digits = 3)
+```
+
+# 5 Discussions
+    A gendered pattern of house ownership is reflected in our model, as the probability of owning a house is greater in males compared to females across Canada. This tendency in house ownership is also consistent with the universally shared image of family housing, where it is usually the husband who provides the financial ground for a physical shelter, whereas the wife takes care of kids and daily chores. One robust explanation for this pattern lies in the gender pay gap, where women are usually paid less as compared to men with similar jobs and qualifications. The lower income presumably limits women’s ability to apply and pay for mortgages without compromising life quality. What’s more, marital status can also influence one’s decision of buying or ability of keeping a real estate, and prior study has shown that separation is negatively associated with house ownership. Generally, ex-partners are more likely to move out of an ownership with a reduced probability of moving back into again, but the materially more well-off ex-partners are more likely to keep the current house ownership (Lersch & Vidal, 2014). Following the idea of gender pay gap, it is safe to presume that men are more often the materially well-off side in a heterosexual marriage, contributing to the higher likelihood of them owning a house seen in the model.
+
+    Based on our model, people of mature working age (40-65) were the most likely to own a house ($\beta$= 0.4814), while young adults (21-29) were the least likely ($\beta$= -0.8663). This pattern is consistent with common intuition, as older people with stable full-time jobs and more established careers are better capable of applying for and paying off mortgages. Additionally, since 40 to 65 is also around the age where people need to sustain a family on a long, martial term, these people may also be in a greater need of a permanent physical shelter. However, other research has shown that house ownership rates have actually been falling among people aged 25-44 years due to falling marriage rates and increasing household earnings risk. This reduced incidence of marriage leads to a weaker need for stable dwelling, and the increase in the earnings risk leads to a delay in the purchase of a first house to when the household becomes wealthier and more stable to purchase a larger house that has investment value (Fisher & Gervais, 2011). Although our model reported that people aged 40-65 were the most likely to own a house, in the 30-39 group, the likelihood of owning a house was somewhat reduced ($\beta$= -0.2180), which complements for the effects seen in the older age group and makes the model consistent with literature evidence. Beside the effects of age alone, it is also worth noting that in Canada, recent increases in interest rates and required qualifications have been slowing the housing market down (Bilyk & TeNyenhuis, 2018), which may be confounding with the effects of age as it is getting harder for people with poorer qualifications and less-paid jobs to get an mortgage opportunity. Although house ownership is still the highest among working-age people in Canada, the overall rate of ownership may be downfalling, calling for governmental actions to be taken to provide more mortgage opportunities for people, possibly by means of decreasing required down payments or transaction costs. 
+
+    Among all provinces, participants living in Quebec have the lowest probability of owning a house ($\beta$= -0.7343), British Columbia second lowest ($\beta$= -0.3718), and Nova Scotia third lowest ($\beta$= -0.3665). The provinces with the most likelihoods of house ownership are Alberta ($\beta$= 0, base level) and NewFoundland ($\beta$= 0.0413). Although average mortgage interest rates do not differ, the differential probabilities of house ownership seen across Canada is to be accounted for by provincial gaps in household income and house prices. According to results from Statista, among the three provinces with the least likelihood of house ownership, Nova Scotia had a much lower median annual income (\$78,920) in 2018 compared to British Columbia (\$87,660) and Quebec (\$83,780), and the median income of these three provinces were all significantly lower than that of Alberta \$101,780). The provincial gap in median annual income of households partially explains the differences seen in house ownership among these provinces. Moreover, despite the drastic gap in median income, results from Living in Canada show that the average selling price of houses in British Columbia (\$736,000) ranked top in Canada, and was significantly from the second highest (Ontario, $594,000) and third highest (Alberta, \$353,000), further reducing the likelihood of owning a house in that province. A reverse scenario stands true for Quebec: with an average house price similar to Alberta, it has a much lower median annual income, which has also contributed to the low likelihood of owning a house in the province. Last but not least, although the median income of Newfoundland is around the levels of British Columbia and Quebec, it is one of the cheapest provinces to buy a house in with an average house price of only \$236,000, which explains why the ownership of houses in the province is the greatest in Canada. 
 
 ## 5.1 Weaknesses and Next Steps
 
-# 6. References
+    An obvious flaw is that no people living in the Territories were sampled in the survey. Indeed there is only less than 0.5% of the Canadian population living in the Territories. However, a comprehensive could provide valuable information about people living in remote regions. The lives in the Territories would be very different from those in the provinces as one can imagine. 
+
+    Another drawback is that the gender groups only have the female and the male as options. It can not precisely reflect the demographic reality in the country. Therefore, making population predictions requires great caution. 
+
+    The last one is about the analysis. Only gender, age group, and the province of residency were included in the model and post-stratification. Some variables, such as education levels, family income, and marital status, are left out of consideration because we do not have population information. A more comprehensive post-stratification matrix will benefit future studies. Besides, expert knowledge in the relevant field will help identify confounding variables and improve model performance. 
+
+# 6 References
 
 ## 6.1 References for the Report
 
 ## 6.2 Reference for Data Cleaning
 
-# 7. Appendix
+# 7 Appendix
 GitHub Link: https://github.com/tomsu0826/g50gssfamiliescycle31
 
