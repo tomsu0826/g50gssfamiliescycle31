@@ -7,7 +7,7 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 library(tidyverse)
 library(brms)
 library(plyr)
@@ -19,6 +19,7 @@ library(modelr)
 library(tidybayes)
 library(gtools)
 library(ggplot2)
+library(kableExtra)
 ```
 
 ```{r data, include=FALSE}
@@ -209,7 +210,7 @@ ggplot(mod_freq2, aes(x=age_group, y=count, fill=Province)) +
 
 # 3 Model
 
-    We are interested in explaining whether a person owns a house based on age, gender and province of residence. Let $y_{i} = 1$ if the respondent owns a house (or any kinds of dwelling). The model is as the following:
+We are interested in explaining whether a person owns a house based on age, gender and province of residence. Let $y_{i} = 1$ if the respondent owns a house (or any kinds of dwelling). The model is as the following:
 
 $$Pr(y_i = 1) = \mbox{logit}^{-1}\left(\beta_{0}+\alpha^{age}_{a[i]} + \alpha^{male}_{m[i]} + \alpha^{province}_{p[i]} + \epsilon\right) $$
 
@@ -229,11 +230,11 @@ The error term $\epsilon$ has been modeled as following a student t-distribution
 
 The priors for fixed effects are all $Normal(0,2)$ on $logit$ scale, which means that most of the samples are from about $0.018 - 0.98$ on a natural probability scale.
 
-    We chose weakly informative priors for two reasons: first of all, we do not have strong assumptions; secondly, we know that the probability must be greater than $0$ and smaller than $1$. By setting weakly informative priors, we hope that the data could tune the posterior distribution as efficiently as possible.
+We chose weakly informative priors for two reasons: first of all, we do not have strong assumptions; secondly, we know that the probability must be greater than $0$ and smaller than $1$. By setting weakly informative priors, we hope that the data could tune the posterior distribution as efficiently as possible.
 
 ## 3.1 Model Checking
 
-```{r model}
+```{r model,warning=FALSE,message=FALSE}
 options(mc.cores = parallel::detectCores())
 # Create a model
 formula1 <- dwelling_ownership ~ male + (1|age_group) + province 
@@ -242,24 +243,30 @@ model1 <- brm(formula = formula1, data = data,family = bernoulli(link = "logit")
               prior = c(prior(normal(0,2), class = Intercept), 
                         prior(normal(0,2), class = b)),
               sample_prior = TRUE, seed = 1992)
-prior_summary(model1)
 ```
 
-    Let's do some model checking. Firstly, we do convergence diagnostic to make sure that the MCMC sampling size is big enough. The results of Gelman-Rubin diagnostic shows that the upper confidence limits are either $1$ or very close to $1$, which indicates that the sample chains are converging. It does not flag an issue.
+Let's do some model checking. Firstly, we do convergence diagnostic to make sure that the MCMC sampling size is big enough. The results of Gelman-Rubin diagnostic shows that the upper confidence limits are either $1$ or very close to $1$, which indicates that the sample chains are converging. It does not flag an issue. The trace plot and density plot all suggest that convergence has been achieved. Figure 3 is the trace plot of two variables: the intercept and Province Manitoba. The four sample chains mix well. Plots for other variables are similar. Figure 4 is an example of posterior density plot. Note that the means are all within three standard errors of the priors, which indicates that our priors work fine. 
 
-```{r convergencediag}
+```{r convergencediag,warning=FALSE,message=FALSE}
 # Convergence diagnostic, we use Gelman-Rubin Diagnostic, if Upper CI is close to 1, samples converge
 model1tranformed <- ggs(model1) 
 modelposterior <- as.mcmc(model1) 
 gelman.diag(modelposterior)
-
-# Plot the trace plots. The four chains mix well for all of the parameters and therefore, we can conclude no evidence of non-convergence.
-mcmc_plot(model1, type = "trace")
-
-mcmc_plot(model1, type = "dens")
 ```
 
-```{r confusionmatrix}
+```{r mcmc, warning=FALSE,message=FALSE}
+# Plot the trace plots. The four chains mix well for all of the parameters and therefore, we can conclude no evidence of non-convergence.
+mcmc_plot(model1, type = "trace", pars = c( "male", "British Columbia", "Manitoba")) +
+            ggtitle("Figure 3: Trace Plot of Posterior Samples")
+```
+
+
+```{r dens, warning=FALSE,message=FALSE}
+mcmc_plot(model1, type = "dens",pars = c("male", "Manitoba")) +
+  ggtitle("Figure 4: Density Plot of Posterior Samples") 
+```
+
+```{r confusionmatrix,warning=FALSE,message=FALSE}
 # The plot shows no evidence of autocorrelation for all model variables in both chains, as the autocorrelation parameters all quickly diminish to around zero.
 #mcmc_plot(model1, type = "acf_bar")
 
@@ -276,11 +283,11 @@ rownames(ConfusionMatrix) <- c("Actual: Rent a House", "Actual: Own a House")
 knitr:: kable(ConfusionMatrix)
 ```
 
-    The correct classification rate of the model is "r ccr". The Confusion Matrix of the model is shown in the table. The model tends to exaggerate the rent rate. 
+The correct classification rate of the model is "r ccr". The Confusion Matrix of the model is shown in the table. The model tends to exaggerate the rent rate. 
 
-    Before proceed to do post-stratification, one more model check is needed. A posterior predictive check is necessary. In the plot, $y$ represents the observed data, $y_{rep}$ refers to a randomly sample from the posterior distribution. The plot shows that the posterior density is consistent with the observed data.
+Before proceed to do post-stratification, one more model check is needed. A posterior predictive check is necessary. In the plot, $y$ represents the observed data, $y_{rep}$ refers to a randomly sample from the posterior distribution. The plot shows that the posterior density is consistent with the observed data.
 
-```{r predictivecheck}
+```{r predictivecheck,warning=FALSE,message=FALSE}
 # Set seed
 set.seed(1992)
 
@@ -297,11 +304,12 @@ pred_model[is.na(pred_model)] <- mean(pred_model,na.rm = TRUE)
 #Posterior predictive check, plot the distribution of observed data vs. 50 simulated datasets. 
 samp <- sample(nrow(pred_model), 100)
 color_scheme_set("teal")
-ppc_dens_overlay(data$dwelling_ownership, pred_model[samp, ])
+ppc_dens_overlay(data$dwelling_ownership, pred_model[samp, ]) +
+  ggtitle("Figure 5: Observed Density vs. Predicted Density") 
 ```
 
-    The we do post-stratification based on the age, gender and province. The census data used is from the 2016 Census cycle. The plot shows that the model does a fair job.  
-```{r post-stratification}
+    Then we do post-stratification based on the age, gender and province. The census data used is from the 2016 Census cycle. The plot shows that the model does a fair job.  
+```{r post-stratification, warning=FALSE,message=FALSE}
 # Post-stratification, estimation in the population
 # Draw a stratified sample
 
@@ -316,13 +324,14 @@ Pop[is.na(Pop)] <- mean(Pop,na.rm = TRUE)
 # Plot the posterior predictive distribution using sampled population datasets vs. observed data
 samp <- sample(nrow(Pop), 100)
 color_scheme_set("teal")
-ppc_dens_overlay(data$dwelling_ownership, Pop[samp, ])
+ppc_dens_overlay(data$dwelling_ownership, Pop[samp, ], titles = "Figure 6: Observed Density vs. Predicted Population Density")
 ```
 
 # 4 Results
 
     The model estimates and credibel intervals are shown in the table.
-```{r result}
+
+```{r result, warning=FALSE,message=FALSE}
 # Results
 # The estimates is on log scale, use inverse logit function to get the probability estimates
 results <- inv.logit(fixef(model1)[,-2])
