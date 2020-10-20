@@ -1,5 +1,5 @@
 ---
-title: "GSS Families"
+title: "Effects of Gender, Age and Province of Residence on Homeownership in Canada"
 author: "Joanne Sun, Leqi Sun, Tzu-Ang Su, Cameron Fryer"
 date: "October 19, 2020"
 abstract: 'Home ownership is an important indicator of life quality and the economy of a country as whole. In this paper, we investigate the Canadian General Social Survey (“GSS”) – Family (cycle 31) dataset, which was a probability survey administered in 2017. Consequently, we find that men are more likely to own a house than women, and that persons aged 40-65 years are more likely to own a house than those belonging to other age groups. While both of these findings provide implications for deeper social issues, it’s also worth noting that the province where Canadians are least likely to own a house and most likely to own a house are Quebec, and Newfoundland, respectively. Code and data supporting this analysis is available at: https://github.com/tomsu0826/g50gssfamiliescycle31'
@@ -81,7 +81,7 @@ strat_data <- strat_data %>%
          Female_over65)
 
 # Create the dataframe for post-stratification, we first extract the variables of interest
-age <-  c(rep(c("under 20", "21-29", "30-39", "40-65", "over 65"),
+age <-  c(rep(c("Under 20", "21-29", "30-39", "40-65", "Over 65"),
               length(levels(data$province))*2))
 
 province <-c(rep(levels(data$province), each = 10))
@@ -156,16 +156,17 @@ poststrat <- poststrat %>%
 ## 2.1 Data and Sampling
     For this paper, the dataset 2017 Canadian General Social Surveys (“GSS”) on Family (cycle 31) is used. This dataset is obtained from the University of Toronto (“U of T”) Library, specifically, via the Computing in the Humanities and Social Sciences (“CHASS”) Data Centre. The dataset on GSS is provided by Statistics Canada. The dataset is downloaded digitally using the Survey Documentation and Analysis (“SDA”) system in CHASS Data Centre, which is only accessible by U of T students, staff, and faculty members.
 
-    The data was collected from February 2 to November 30, 2017 via computer assisted telephone interviews (“CATI”) where the respondents were interviewed in the official language of their choice. The target population was all persons who are age 15 or older in Canada but excludes residents of Yukon, Northwest Territories, and Nunavut; and full-time residents of institutions. The listing of population from which Statistics Canada can draw samples from, otherwise known as the “sampling frame” was created using a list of telephone numbers in use, both landline and cellular available to Statistics Canada from various sources. The Address Register (AR) which contains a list of all dwellings within the ten provinces was also included in creating the sampling frame. The use of AR helped Statistics Canada to group all telephone numbers together with the same address. The target number of respondents or sample size was 20,000 and in the end the actual number was 20,602.
+    The data was collected from February 2 to November 30, 2017 via computer-assisted telephone interviews (“CATI”) where the respondents were interviewed in the official language of their choice. The target population was Canadians age 15 and older, excluding full-time residents of institutions and those residing in Yukon, Northwest Territories, and Nunavut. The list of the population from which Statistics Canada can draw samples from, otherwise known as the “sampling frame” was created using a list of telephone numbers in use. The list consists of both landline and cellular devices available to Statistics Canada from various sources. The Address Register (AR) which contains a list of all dwellings within the ten provinces was also included in creating the sampling frame. The use of AR helped Statistics Canada to group all telephone numbers together with the same address. The target number of respondents for sample size was 20,000 and in the end, the actual number was 20,602.
 
-    During the sampling period, each of the ten provinces were divided into geographic areas or strata. In each stratum, a simple random sample without replacement was used, the respondents were randomly selected from each household for the telephone interview. For the people who first refused to participate either due to inconvenient call time or some other reasons were recontacted later on, along with an explanation why the survey was important and encouraged their participation. In the end, the overall response rate was 52.4%. Finally, the cost of this survey was not disclosed in the official documentation obtained from CHASS.
+    During the sampling period, each of the ten provinces were divided into geographic areas or strata. In each stratum, a simple random sample without replacement was used, the respondents were randomly selected from each household for the telephone interview. Of the people who first refused to participate — either due to inconvenient call time or some other reason—they were recontacted later on and given an explanation as to why the survey was important and why they should participate. In the end, the overall response rate was 52.4%. Finally, the cost of this survey was not disclosed in the official documentation obtained from CHASS.
 
 ## 2.2 The Survey
 
-    The survey itself is very extensive and covers many grounds in regards to families in Canada. Aside from the basic personal information like sex and date of birth, many other concepts were introduced and asked such as family origins, conjugal history, leaving the parental home (young adults leaving home), intentions and reasons to form a union, respondent’s children, fertility intentions, maternity/parental leave, organizations and decision making within the household, etc. Each concept contains multiple questions about it. One key strength about this survey is the length. Once completed, a very detailed profile of a respondent’s family can be produced. However, this invariably becomes an issue, or a key weakness. The official documentation did not specify the average time a respondent took to complete the survey, but a good estimate could be within 30 minutes to an hour, and conducting such a long survey over the telephone may be too time and energy consuming. To solve this issue, every question in the survey was designed to have Don’t Know (DK) and Refusal (RF) as options, so respondents can always refuse, or in a way, “skip” the question very quickly.
+    The survey itself is very extensive and covers many grounds in regard to families in Canada. Aside from the basic personal information like sex and date of birth, many other concepts were introduced and asked such as family origins, conjugal history, leaving the parental home (young adults leaving home), intentions and reasons to form a union, respondent’s children, fertility intentions, maternity/parental leave, organizations and decision making within the household, etc. Each concept contains multiple questions about it. One key strength of this survey is the length; once completed, a very detailed profile of a respondent’s family can be produced. However, this invariably becomes an issue, or a key weakness. The official documentation did not specify the average time a respondent took to complete the survey, but a good estimate could be within 30 minutes to an hour, and conducting such a long survey over the telephone may be too time and energy-consuming. To solve this issue, every question in the survey was designed to have Don’t Know (DK) and Refusal (RF) as options, so respondents can always refuse, or in a way, “skip” the question very quickly.
 
 ## 2.3 Data Used
-    Once the raw dataset was downloaded from CHASS, we used a script created by Rohan Alexander and Sam Caetano to clean up the data. See GitHub repository for the script and it’s output. Even after cleaning (only a selected number of variables from the raw data were kept), the dataset is still huge, thus we have decided to not use all the variables, and only pick out ones we think are relevant. Our goal here is to find which variable has the greatest impact on homeownership, since the survey itself goes into detail on every topic, using it may not be representative of the population, hence we unfortunately cannot choose those variables as the variables we want to use. In our case, we think the more general a variable is, the better. Therefore we chose only three: age, gender, and geographical location (by province) to investigate the effects of it on homeownership. Figure 1 and 2 below shows plots of the raw data.
+    Once the raw dataset was downloaded from CHASS, we used a script created by Rohan Alexander and Sam Caetano to clean up the data. See the GitHub repository for the script and its output. Even after cleaning (only a selected number of variables from the raw data were kept), the dataset is still huge, thus we have decided to not use all the variables, and only pick out ones we think are relevant. Our goal here is to find which variable has the greatest impact on homeownership, since the survey itself goes into detail on every topic, using it may not be representative of the population, hence we, unfortunately, cannot choose those variables as the variables we want to use. In our case, we think the more general a variable is, the better. Therefore we chose only three: age, gender, and geographical location (by province) to investigate the effects of it on homeownership. Figure 1 and 2 below shows plots of the raw data.
+
 ```{r plot raw data 1, fig.show = "hold", echo = FALSE}
 simple_plot <- data 
 # Use count to get the frequency
@@ -232,7 +233,7 @@ The priors for fixed effects are all $Normal(0,2)$ on $logit$ scale, which means
 
 ## 3.1 Model Checking
 
-```{r model, include=FALSE, eval= FALSE}
+```{r model}
 options(mc.cores = parallel::detectCores())
 # Create a model
 formula1 <- dwelling_ownership ~ male + (1|age_group) + province 
@@ -246,7 +247,7 @@ prior_summary(model1)
 
     Let's do some model checking. Firstly, we do convergence diagnostic to make sure that the MCMC sampling size is big enough. The results of Gelman-Rubin diagnostic shows that the upper confidence limits are either $1$ or very close to $1$, which indicates that the sample chains are converging. It does not flag an issue.
 
-```{r convergencediag, include=FALSE, eval = FALSE}
+```{r convergencediag}
 # Convergence diagnostic, we use Gelman-Rubin Diagnostic, if Upper CI is close to 1, samples converge
 model1tranformed <- ggs(model1) 
 modelposterior <- as.mcmc(model1) 
@@ -258,7 +259,7 @@ mcmc_plot(model1, type = "trace")
 mcmc_plot(model1, type = "dens")
 ```
 
-```{r confusionmatrix, include=FALSE, eval = FALSE}
+```{r confusionmatrix}
 # The plot shows no evidence of autocorrelation for all model variables in both chains, as the autocorrelation parameters all quickly diminish to around zero.
 #mcmc_plot(model1, type = "acf_bar")
 
@@ -279,7 +280,7 @@ knitr:: kable(ConfusionMatrix)
 
     Before proceed to do post-stratification, one more model check is needed. A posterior predictive check is necessary. In the plot, $y$ represents the observed data, $y_{rep}$ refers to a randomly sample from the posterior distribution. The plot shows that the posterior density is consistent with the observed data.
 
-```{r predictivecheck, include=FALSE, eval = FALSE}
+```{r predictivecheck}
 # Set seed
 set.seed(1992)
 
@@ -300,7 +301,7 @@ ppc_dens_overlay(data$dwelling_ownership, pred_model[samp, ])
 ```
 
     The we do post-stratification based on the age, gender and province. The census data used is from the 2016 Census cycle. The plot shows that the model does a fair job.  
-```{r post-stratification, include=FALSE, eval=FALSE}
+```{r post-stratification}
 # Post-stratification, estimation in the population
 # Draw a stratified sample
 
@@ -316,13 +317,12 @@ Pop[is.na(Pop)] <- mean(Pop,na.rm = TRUE)
 samp <- sample(nrow(Pop), 100)
 color_scheme_set("teal")
 ppc_dens_overlay(data$dwelling_ownership, Pop[samp, ])
-
 ```
 
 # 4 Results
 
     The model estimates and credibel intervals are shown in the table.
-```{r result, include=FALSE, eval=FALSE}
+```{r result}
 # Results
 # The estimates is on log scale, use inverse logit function to get the probability estimates
 results <- inv.logit(fixef(model1)[,-2])
@@ -348,20 +348,53 @@ knitr::kable(results, digits = 3)
 
 # 6 References
 
+Allaire JJ., Xie Y., McPherson J., Luraschi J., Ushey K., Atkins A., Wickham H., Chang J., Chang W., Iannone R. 2020. rmarkdown: Dynamic Documents for R. R package version 2.3. 
+Retrieved from: https://rmarkdown.rstudio.com
+
+Alexander R., Caetano S., 2020. gss_cleaning. Downloaded from: https://q.utoronto.ca/courses/184062/files/9419005/download?wrap=1
+
 Average house prices in Canada. Retrieved from: https://www.livingin-canada.com/house-prices-canada.html
 
-Battu, Harminder and Ma, Ada and Phimister, Euan. 2008. Housing tenure, job mobility and unemployment in the UK. The Economic Journal. 118(3): 311-328. 
-Bilyk, Olga and TeNyenhuis, Maria. 2018. The impact of recent policy changes on the Canadian Mortgage Market. Bank of Canada. Retrieved from: https://www.bankofcanada.ca/2018/11/staff-analytical-note-2018-35/
+Battu H. Ma, A. and Phimister, Euan. 2008. Housing tenure, job mobility and unemployment in the UK. The Economic Journal. 118(3): 311-328. 
 
-Fisher, Jonas and Gervais, Martin. 2011. Why has home ownership fallen among the young? International economic Review. 52(3): 883-912.
+Bilyk O., TeNyenhuis, M. 2018. The impact of recent policy changes on the Canadian Mortgage Market. Bank of Canada. Retrieved from: https://www.bankofcanada.ca/2018/11/staff-analytical-note-2018-35/
 
-Lersch, Philipp and Vidal, Sergi. 2014. Falling out of love and down the housing ladder: a longitudinal analysis of marital separation and home ownership. European Sociological Review. 30(4): 512-524. 
+Bolker B., Robinson D. 2020. broom.mixed: Tidying Methods for Mixed Models. R package version 0.2.6. Retrieved from: https://CRAN.R-project.org/package=broom.mixed
+Bürkner PC. 2018. Multilevel Modeling with the R Package brms. The R Journal. 10(1): 395-411. 
+
+Canadian General Social Surveys on Family (cycle 31). 2017. CHASS Data Centre. Retrieved from: https://sda-artsci-utoronto-ca.myaccess.library.utoronto.ca/cgi-bin/sda/hsda?harcsda4+gss31
+
+Downes M., Carlin JB. 2020. Multilevel Regression and Poststratification Versus Survey Sample Weighting for Estimating Population Quantities in Large Population Health Studies. American Journal of Epidemiology. 189(7): 717-725.  
+
+Fisher J., Gervais, M. 2011. Why has home ownership fallen among the young? International economic Review. 52(3): 883-912.
+
+Gabry J., Simpson D., Vehtari A., Betancourt M., Gelman A. 2019. Visualization in Bayesian workflow. Journal of Royal Statistical Society. 182(2):389-402.
+
+Gao, Y., Kennedy L., Simpson D., Gelman A. 2020. Improving Multilevel Regression and Poststratification with Structured Priors. Bayesian Analysis. 
+
+Kay M. 2020. tidybayes: Tidy Data and Geoms for Bayesian Models. Retrieved from: http://mjskay.github.io/tidybayes
+
+Lersch P., Vidal, S. 2014. Falling out of love and down the housing ladder: a longitudinal analysis of marital separation and home ownership. European Sociological Review. 30(4): 512-524. 
+
+Martin XF. 2016. ggmcmc: Analysis of MCMC Samples and Bayesian Inference. Journal of Statistical Software. 70(9):1-20
 
 Median annual family income in Canada 2018, by province. Retrieved from: https://www.statista.com/statistics/467078/median-annual-family-income-in-canada-by-province/
 
-Tumen, Semih and Zeydanli, Tugba. 2014. Home ownership and job satisfaction. Social Indicators Research. 117(1): 165-177. 
+Plummer M., Best N., Cowies K., Vines K. 2006. CODA: Convergence Diagnosis and Output Analysis for MCMC. R News. 6(1):7-11. 
 
-Gao, Yuxiang and Kennedy, Lauren and Simpson, Daniel and Gelman, Andrew. "Improving Multilevel Regression and Poststratification with Structured Priors." Bayesian Analysis, 10.1214/20-ba1223, 2020.
+R Core Team. 2020. R: A language and environment for statistical computing. R, Foundation for Statistical Computing, Vienna, Austria. Retrieved from: https://www.R-project.org
+
+Tumen S., Zeydanli, T. 2014. Home ownership and job satisfaction. Social Indicators Research. 117(1): 165-177. 
+
+Warnes GR., Bolker B., Lumley T. 2020. gtools: Various R Programming Tools. Retrieved from: https://CRAN.R-project.org/package=gtools
+
+Wickerham H. 2011. The Split-Apply-Combine Strategy for Data Analysis. Journal of Statistical Software. 40(1):1-29. 
+Wickham H. 2016. ggplot2: Elegant Graphics for Data Analysis. Retrieved from: https://ggplot2.tidyverse.org 
+Wickham H. 2020. modelr: Modelling Functions that Work with the Pipe. Retrieved from: https://CRAN.R-project.org/package=modelr
+
+Wickham H., Averick M., Bryan J., Chang W., McGowan LD., François R., Grolemund G., Hayes A., Lionel H., Hester J., Kuhn M., Pedersen TL., Miller E., Bache SM., Müller K., Ooms J., 
+Robinson D., Seidel DP., Spinu V., Takahashi K., Vaughan D., Wilke C., Woo K., Yutani Hatoaki. 2019. Welcome to the tidyverse. Journal of Open Source Software. 4(43): 1686. 
+Wickham H., Hester J., Chang W. 2020. devtools: Tools to Make Developing R Packages Easier. Retrieved from: https://devtools.r-lib.org/,https://github.com/r-lib/devtools
 
 # 7 Appendix
 GitHub Link: https://github.com/tomsu0826/g50gssfamiliescycle31
